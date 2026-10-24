@@ -1,18 +1,20 @@
-
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Workspace = game:GetService("Workspace")
 local VirtualUser = game:GetService("VirtualUser")
+local RunService = game:GetService("RunService")
 
--- Global Değişkenler (GUI Kontrolleri İçin)
+-- Global Değişkenler
 _G.AutoFarmEnabled = false
-_G.TweenSpeed = 25 -- Varsayılan hız değeri
+_G.MovementMode = "Tween" -- "Tween" veya "Teleport"
+_G.MovementSpeed = 25 -- Tween Hızı veya Teleport Hızı (bekleme süresi)
+_G.AntiLagEnabled = false
+_G.RenderingEnabled = true
 
 -- ==========================================
 -- ANTI-AFK KORUMASI
 -- ==========================================
--- Oyundan 20 dakika boyunca işlem yapılmadığı için atılmanızı engeller.
 if not _G.AntiAFKLoaded then
     LocalPlayer.Idled:Connect(function()
         VirtualUser:Button2Down(Vector2.new(0,0), Workspace.CurrentCamera.CFrame)
@@ -28,153 +30,313 @@ end
 local ScreenGui = Instance.new("ScreenGui")
 local MainFrame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
-local ToggleButton = Instance.new("TextButton")
-local SpeedInput = Instance.new("TextBox")
-local SpeedLabel = Instance.new("TextLabel")
 
--- GUI'nin silinmemesi için koruma (Sadece destekleyen executorlarda çalışır)
+local ToggleButton = Instance.new("TextButton")
+local ModeButton = Instance.new("TextButton")
+
+local SpeedLabel = Instance.new("TextLabel")
+local SpeedInput = Instance.new("TextBox")
+
+local AntiLagButton = Instance.new("TextButton")
+local RenderButton = Instance.new("TextButton")
+
 if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end
 ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- Ana Panel Tasarımı
+-- Ana Panel (Yeni özellikler sığması için boyutu büyütüldü)
 MainFrame.Name = "MM2_FarmPanel"
-MainFrame.Size = UDim2.new(0, 220, 0, 180)
+MainFrame.Size = UDim2.new(0, 220, 0, 310)
 MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
-MainFrame.Draggable = true -- Paneli ekranda sürükleyebilirsiniz
+MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
 -- Başlık
 Title.Size = UDim2.new(1, 0, 0, 35)
 Title.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Text = "MM2 Coin Collector"
+Title.Text = "MM2 Ultimate Farm"
 Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 16
 Title.BorderSizePixel = 0
 Title.Parent = MainFrame
 
--- Açma / Kapatma Butonu (Toggle)
-ToggleButton.Size = UDim2.new(0, 180, 0, 40)
-ToggleButton.Position = UDim2.new(0, 20, 0, 50)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40) -- Kırmızı (Kapalı)
+-- Auto Farm Toggle
+ToggleButton.Size = UDim2.new(0, 180, 0, 35)
+ToggleButton.Position = UDim2.new(0, 20, 0, 45)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleButton.Text = "Auto Farm: KAPALI"
 ToggleButton.Font = Enum.Font.SourceSansBold
-ToggleButton.TextSize = 16
+ToggleButton.TextSize = 14
 ToggleButton.BorderSizePixel = 0
 ToggleButton.Parent = MainFrame
 
--- Hız Ayarı Etiketi (Label)
+-- Hareket Modu (Tween / Teleport)
+ModeButton.Size = UDim2.new(0, 180, 0, 35)
+ModeButton.Position = UDim2.new(0, 20, 0, 90)
+ModeButton.BackgroundColor3 = Color3.fromRGB(50, 100, 200)
+ModeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ModeButton.Text = "Mod: Tween"
+ModeButton.Font = Enum.Font.SourceSansBold
+ModeButton.TextSize = 14
+ModeButton.BorderSizePixel = 0
+ModeButton.Parent = MainFrame
+
+-- Hız Ayarı Etiketi
 SpeedLabel.Size = UDim2.new(0, 100, 0, 30)
-SpeedLabel.Position = UDim2.new(0, 20, 0, 110)
+SpeedLabel.Position = UDim2.new(0, 20, 0, 135)
 SpeedLabel.BackgroundTransparency = 1
 SpeedLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-SpeedLabel.Text = "Tween Hızı:"
+SpeedLabel.Text = "Hız / Değer:"
 SpeedLabel.Font = Enum.Font.SourceSans
 SpeedLabel.TextSize = 14
 SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
 SpeedLabel.Parent = MainFrame
 
--- Hız Giriş Kutusu (TextBox)
+-- Hız Giriş Kutusu
 SpeedInput.Size = UDim2.new(0, 70, 0, 30)
-SpeedInput.Position = UDim2.new(0, 130, 0, 110)
+SpeedInput.Position = UDim2.new(0, 130, 0, 135)
 SpeedInput.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 SpeedInput.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedInput.Text = tostring(_G.TweenSpeed)
+SpeedInput.Text = tostring(_G.MovementSpeed)
 SpeedInput.Font = Enum.Font.SourceSansBold
 SpeedInput.TextSize = 14
 SpeedInput.BorderSizePixel = 0
 SpeedInput.Parent = MainFrame
 
+-- Anti-Lag Tuşu
+AntiLagButton.Size = UDim2.new(0, 180, 0, 35)
+AntiLagButton.Position = UDim2.new(0, 20, 0, 175)
+AntiLagButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+AntiLagButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AntiLagButton.Text = "Anti-Lag: KAPALI"
+AntiLagButton.Font = Enum.Font.SourceSansBold
+AntiLagButton.TextSize = 14
+AntiLagButton.BorderSizePixel = 0
+AntiLagButton.Parent = MainFrame
+
+-- 3D Rendering Tuşu
+RenderButton.Size = UDim2.new(0, 180, 0, 35)
+RenderButton.Position = UDim2.new(0, 20, 0, 220)
+RenderButton.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+RenderButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+RenderButton.Text = "3D Rendering: AÇIK"
+RenderButton.Font = Enum.Font.SourceSansBold
+RenderButton.TextSize = 14
+RenderButton.BorderSizePixel = 0
+RenderButton.Parent = MainFrame
+
 -- ==========================================
--- FONKSİYONELLİK VE LOGIC
+-- GÜNCEL KONTROL VE FONKSİYONLAR
 -- ==========================================
 
--- Hız Değiştirme Yakalayıcı
-SpeedInput.FocusLost:Connect(function(enterPressed)
-    local numericValue = tonumber(SpeedInput.Text)
-    if numericValue and numericValue > 0 then
-        _G.TweenSpeed = numericValue
+SpeedInput.FocusLost:Connect(function()
+    local val = tonumber(SpeedInput.Text)
+    if val and val > 0 then
+        _G.MovementSpeed = val
     else
-        SpeedInput.Text = tostring(_G.TweenSpeed) -- Geçersiz değer girilirse eskisini yazar
+        SpeedInput.Text = tostring(_G.MovementSpeed)
     end
 end)
 
--- Buton Mantığı
 ToggleButton.MouseButton1Click:Connect(function()
     _G.AutoFarmEnabled = not _G.AutoFarmEnabled
     if _G.AutoFarmEnabled then
         ToggleButton.Text = "Auto Farm: AÇIK"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 180, 40) -- Yeşil
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
     else
         ToggleButton.Text = "Auto Farm: KAPALI"
-        ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40) -- Kırmızı
+        ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
     end
 end)
 
--- En yakındaki parayı bulma fonksiyonu (Coin_Server)
+ModeButton.MouseButton1Click:Connect(function()
+    if _G.MovementMode == "Tween" then
+        _G.MovementMode = "Teleport"
+        ModeButton.Text = "Mod: Teleport"
+    else
+        _G.MovementMode = "Tween"
+        ModeButton.Text = "Mod: Tween"
+    end
+end)
+
+-- Anti-Lag Özelliği
+AntiLagButton.MouseButton1Click:Connect(function()
+    _G.AntiLagEnabled = not _G.AntiLagEnabled
+    if _G.AntiLagEnabled then
+        AntiLagButton.Text = "Anti-Lag: AÇIK"
+        AntiLagButton.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+        for _, v in pairs(Workspace:GetDescendants()) do
+            if v:IsA("BasePart") and not v:IsA("Terrain") then
+                v.Material = Enum.Material.SmoothPlastic
+                v.Reflectance = 0
+            end
+        end
+    else
+        AntiLagButton.Text = "Anti-Lag: KAPALI"
+        AntiLagButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+    end
+end)
+
+-- 3D Rendering Açma/Kapama
+RenderButton.MouseButton1Click:Connect(function()
+    _G.RenderingEnabled = not _G.RenderingEnabled
+    RunService:Set3dRenderingEnabled(_G.RenderingEnabled)
+    if _G.RenderingEnabled then
+        RenderButton.Text = "3D Rendering: AÇIK"
+        RenderButton.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+    else
+        RenderButton.Text = "3D Rendering: KAPALI"
+        RenderButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+    end
+end)
+
+-- En yakın coini bul
 local function getClosestCoin()
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return nil end
-    
-    local rootPart = character.HumanoidRootPart
-    local closestCoin = nil
-    local shortestDistance = math.huge
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
+    local root = char.HumanoidRootPart
+    local closest, shortest = nil, math.huge
     
     for _, item in pairs(Workspace:GetDescendants()) do
         if item.Name == "Coin_Server" and item:IsA("BasePart") then
-            local distance = (item.Position - rootPart.Position).Magnitude
-            if distance < shortestDistance then
-                shortestDistance = distance
-                closestCoin = item
+            local dist = (item.Position - root.Position).Magnitude
+            if dist < shortest then
+                shortest = dist
+                closest = item
             end
         end
     end
-    return closestCoin
+    return closest
 end
 
--- Belirlenen paraya yumuşak geçiş (Tween) yapma fonksiyonu
-local function tweenToCoin(coin)
-    local character = LocalPlayer.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then return end
-    
-    local rootPart = character.HumanoidRootPart
-    local distance = (coin.Position - rootPart.Position).Magnitude
-    
-    -- Dinamik hız ayarı direkt GUI'den alınır
-    local speed = _G.TweenSpeed
-    local timeToTween = distance / speed
-    
-    local tweenInfo = TweenInfo.new(timeToTween, Enum.EasingStyle.Linear)
-    local tween = TweenService:Create(rootPart, tweenInfo, {CFrame = coin.CFrame})
-    
-    tween:Play()
-    
-    -- Farm kapatılırsa veya karakter ölürse tween hareketini anında kesmek için kontrol döngüsü
-    while tween.PlaybackState == Enum.PlaybackState.Playing do
-        if not _G.AutoFarmEnabled or not coin:IsDescendantOf(Workspace) or not character:FindFirstChild("HumanoidRootPart") then
-            tween:Cancel()
-            break
+-- Oyuncunun coin sayısını bulma (Leaderstats veya backpack kontrolü)
+local function getCollectedCoins()
+    local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
+    if leaderstats then
+        for _, stat in pairs(leaderstats:GetChildren()) do
+            if stat.Name == "Coins" or stat.Name == "Coin" or stat.Name == "Collected" then
+                return stat.Value
+            end
         end
-        task.wait()
+    end
+    return 0
+end
+
+-- Smooth Tween veya Teleport ile Gitme
+local function moveToCoin(coin)
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local root = char.HumanoidRootPart
+    
+    if _G.MovementMode == "Tween" then
+        local dist = (coin.Position - root.Position).Magnitude
+        local speed = math.clamp(_G.MovementSpeed, 1, 500)
+        local timeToTween = dist / speed
+        
+        local info = TweenInfo.new(timeToTween, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
+        local tween = TweenService:Create(root, info, {CFrame = coin.CFrame})
+        tween:Play()
+        
+        while tween.PlaybackState == Enum.PlaybackState.Playing do
+            if not _G.AutoFarmEnabled or not coin:IsDescendantOf(Workspace) or not char:FindFirstChild("HumanoidRootPart") then
+                tween:Cancel()
+                break
+            end
+            task.wait()
+        end
+    else
+        -- Teleport Modu
+        root.CFrame = coin.CFrame
+        task.wait(math.clamp(_G.MovementSpeed / 100, 0.01, 1))
     end
 end
 
--- Ana Farm Döngüsü
+-- Fling (Güçlü Sallama) Fonksiyonu
+local function startFlingLoop()
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local root = char.HumanoidRootPart
+    
+    local startTime = tick()
+    local noclipConnection
+    local resetDetected = false
+    
+    -- No-Clip Aç
+    noclipConnection = RunService.Stepped:Connect(function()
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
+        end
+    end)
+    
+    -- Erken reset atıldı mı kontrolü için Humanoid Health dinleme
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.Died:Connect(function()
+            resetDetected = true
+        end)
+    end
+    
+    -- 7 Saniye Boyunca Herkesi Takip Et ve Fling At
+    while tick() - startTime < 7 and not resetDetected do
+        local targetPlayer = nil
+        local shortestDist = math.huge
+        
+        for _, p in pairs(Players:GetPlayers()) do
+            if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                local d = (p.Character.HumanoidRootPart.Position - root.Position).Magnitude
+                if d < shortestDist then
+                    shortestDist = d
+                    targetPlayer = p.Character.HumanoidRootPart
+                end
+            end
+        end
+        
+        if targetPlayer then
+            root.CFrame = targetPlayer.CFrame
+            root.Velocity = Vector3.new(99999, 99999, 99999) -- Güçlü Fling Hızı
+            root.RotVelocity = Vector3.new(99999, 99999, 99999)
+        end
+        task.wait(0.05)
+    end
+    
+    if noclipConnection then
+        noclipConnection:Disconnect()
+    end
+end
+
+-- Ana Farm Döngüsü ve Maç / Coin Kontrolü
 task.spawn(function()
+    local lastCoinCount = 0
     while true do
         task.wait(0.3)
         if _G.AutoFarmEnabled then
-            local targetCoin = getClosestCoin()
-            if targetCoin and targetCoin:IsDescendantOf(Workspace) then
-                tweenToCoin(targetCoin)
-                task.wait(0.1)
+            local coin = getClosestCoin()
+            if coin and coin:IsDescendantOf(Workspace) then
+                moveToCoin(coin)
+            else
+                -- Ortada coin kalmadıysa veya maç bittiyse kontrol et
+                task.wait(1)
+                local currentCoins = getCollectedCoins()
+                
+                -- Eğer 50 coin toplandıysa ve 50'nin katıysa
+                if currentCoins >= 50 and (currentCoins % 50 == 0) then
+                    -- Öldükten sonra çalışması için karakterin ölmesini bekleyelim veya öldüyse tetikleyelim
+                    local char = LocalPlayer.Character
+                    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+                    if humanoid and humanoid.Health <= 0 then
+                        startFlingLoop()
+                        LocalPlayer.Character:BreakJoints() -- 7 saniye bitince tekrar reset at
+                        task.wait(5)
+                    end
+                end
             end
         end
     end
 end)
-
