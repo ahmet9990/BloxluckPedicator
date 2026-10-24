@@ -14,6 +14,7 @@ _G.AntiLagEnabled = false
 _G.RenderingEnabled = true
 _G.NoclipEnabled = false
 _G.AntiAFKEnabled = false
+_G.BringItemsEnabled = false -- Coinleri/Candyleri kendine çekme özelliği
 
 -- Aktif Tween'i takip etmek için
 local currentTween = nil
@@ -32,6 +33,7 @@ local SpeedLabel = Instance.new("TextLabel")
 local SpeedInput = Instance.new("TextBox")
 
 local NoclipButton = Instance.new("TextButton")
+local BringButton = Instance.new("TextButton")
 local AntiAfkButton = Instance.new("TextButton")
 local AntiLagButton = Instance.new("TextButton")
 local RenderButton = Instance.new("TextButton")
@@ -40,9 +42,9 @@ if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end
 ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- Ana Panel
+-- Ana Panel (Yeni tuş sığması için yükseklik artırıldı)
 MainFrame.Name = "MM2_FarmPanel"
-MainFrame.Size = UDim2.new(0, 220, 0, 400)
+MainFrame.Size = UDim2.new(0, 220, 0, 445)
 MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
@@ -115,9 +117,20 @@ NoclipButton.TextSize = 14
 NoclipButton.BorderSizePixel = 0
 NoclipButton.Parent = MainFrame
 
+-- Bring Items Tuşu (Coin/Candy Karakterine gelsin)
+BringButton.Size = UDim2.new(0, 180, 0, 35)
+BringButton.Position = UDim2.new(0, 20, 0, 220)
+BringButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+BringButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+BringButton.Text = "Bring Items: KAPALI"
+BringButton.Font = Enum.Font.SourceSansBold
+BringButton.TextSize = 14
+BringButton.BorderSizePixel = 0
+BringButton.Parent = MainFrame
+
 -- Anti-AFK Tuşu
 AntiAfkButton.Size = UDim2.new(0, 180, 0, 35)
-AntiAfkButton.Position = UDim2.new(0, 20, 0, 220)
+AntiAfkButton.Position = UDim2.new(0, 20, 0, 265)
 AntiAfkButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 AntiAfkButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 AntiAfkButton.Text = "Anti-AFK: KAPALI"
@@ -128,7 +141,7 @@ AntiAfkButton.Parent = MainFrame
 
 -- Anti-Lag Tuşu
 AntiLagButton.Size = UDim2.new(0, 180, 0, 35)
-AntiLagButton.Position = UDim2.new(0, 20, 0, 265)
+AntiLagButton.Position = UDim2.new(0, 20, 0, 310)
 AntiLagButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 AntiLagButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 AntiLagButton.Text = "Anti-Lag: KAPALI"
@@ -139,7 +152,7 @@ AntiLagButton.Parent = MainFrame
 
 -- 3D Rendering Tuşu
 RenderButton.Size = UDim2.new(0, 180, 0, 35)
-RenderButton.Position = UDim2.new(0, 20, 0, 310)
+RenderButton.Position = UDim2.new(0, 20, 0, 355)
 RenderButton.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
 RenderButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 RenderButton.Text = "3D Rendering: AÇIK"
@@ -209,6 +222,36 @@ RunService.Stepped:Connect(function()
             for _, part in pairs(char:GetDescendants()) do
                 if part:IsA("BasePart") then
                     part.CanCollide = false
+                end
+            end
+        end
+    end
+end)
+
+-- Bring Items Tuşu
+BringButton.MouseButton1Click:Connect(function()
+    _G.BringItemsEnabled = not _G.BringItemsEnabled
+    if _G.BringItemsEnabled then
+        BringButton.Text = "Bring Items: AÇIK"
+        BringButton.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+    else
+        BringButton.Text = "Bring Items: KAPALI"
+        BringButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+    end
+end)
+
+-- Candyleri / Coinleri karaktere çekme döngüsü
+task.spawn(function()
+    while true do
+        task.wait(0.2)
+        if _G.BringItemsEnabled then
+            local char = LocalPlayer.Character
+            if char and char:FindFirstChild("HumanoidRootPart") then
+                local root = char.HumanoidRootPart
+                for _, item in pairs(Workspace:GetDescendants()) do
+                    if (item.Name == "Coin_Server" or item.Name == "Candy_Server") and item:IsA("BasePart") then
+                        item.CFrame = root.CFrame
+                    end
                 end
             end
         end
@@ -321,7 +364,6 @@ local function moveToCoin(coin)
         local speed = math.clamp(_G.MovementSpeed, 5, 300)
         local timeToTween = dist / speed
         
-        -- Fiziksel sarsıntıyı önlemek için hızı sıfırla
         root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
         root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
         
