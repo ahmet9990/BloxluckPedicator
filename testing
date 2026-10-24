@@ -16,6 +16,7 @@ _G.RenderingEnabled = true
 _G.NoclipEnabled = true
 _G.AntiAFKEnabled = false
 _G.BringCoinsEnabled = false
+_G.WorldNoCollision = false
 
 local currentTween = nil
 local flyBV = nil
@@ -35,8 +36,8 @@ ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:WaitForChild("Playe
 
 local Main = Instance.new("Frame")
 Main.Name = "Main"
-Main.Size = UDim2.new(0, 260, 0, 490)
-Main.Position = UDim2.new(0.04, 0, 0.22, 0)
+Main.Size = UDim2.new(0, 260, 0, 540)
+Main.Position = UDim2.new(0.04, 0, 0.18, 0)
 Main.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -117,17 +118,18 @@ local function CreateButton(text, yPos, color)
 	return btn
 end
 
-local ToggleButton = CreateButton("Auto Farm: KAPALI", 85, Color3.fromRGB(180, 45, 45))
-local ModeButton = CreateButton("Mod: Tween", 128, Color3.fromRGB(45, 110, 210))
-local BringButton = CreateButton("Tüm Coinleri Çek: KAPALI", 171, Color3.fromRGB(180, 45, 45))
-local NoclipButton = CreateButton("No-Clip: AÇIK", 214, Color3.fromRGB(40, 170, 90))
-local AntiAfkButton = CreateButton("Anti-AFK: KAPALI", 257, Color3.fromRGB(180, 45, 45))
-local AntiLagButton = CreateButton("Anti-Lag: KAPALI", 300, Color3.fromRGB(180, 45, 45))
-local RenderButton = CreateButton("3D Rendering: AÇIK", 343, Color3.fromRGB(40, 170, 90))
+local ToggleButton   = CreateButton("Auto Farm: KAPALI", 85, Color3.fromRGB(180, 45, 45))
+local ModeButton     = CreateButton("Mod: Tween", 128, Color3.fromRGB(45, 110, 210))
+local BringButton    = CreateButton("Tüm Coinleri Çek: KAPALI", 171, Color3.fromRGB(180, 45, 45))
+local NoclipButton   = CreateButton("No-Clip: AÇIK", 214, Color3.fromRGB(40, 170, 90))
+local WorldColButton = CreateButton("Dünya Collision: AÇIK", 257, Color3.fromRGB(180, 45, 45))
+local AntiAfkButton  = CreateButton("Anti-AFK: KAPALI", 300, Color3.fromRGB(180, 45, 45))
+local AntiLagButton  = CreateButton("Anti-Lag: KAPALI", 343, Color3.fromRGB(180, 45, 45))
+local RenderButton   = CreateButton("3D Rendering: AÇIK", 386, Color3.fromRGB(40, 170, 90))
 
 local SpeedLabel = Instance.new("TextLabel")
 SpeedLabel.Size = UDim2.new(0, 120, 0, 28)
-SpeedLabel.Position = UDim2.new(0, 15, 0, 395)
+SpeedLabel.Position = UDim2.new(0, 15, 0, 440)
 SpeedLabel.BackgroundTransparency = 1
 SpeedLabel.Text = "Hız:"
 SpeedLabel.Font = Enum.Font.Gotham
@@ -138,7 +140,7 @@ SpeedLabel.Parent = Main
 
 local SpeedInput = Instance.new("TextBox")
 SpeedInput.Size = UDim2.new(0, 80, 0, 28)
-SpeedInput.Position = UDim2.new(1, -95, 0, 395)
+SpeedInput.Position = UDim2.new(1, -95, 0, 440)
 SpeedInput.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
 SpeedInput.Text = tostring(_G.MovementSpeed)
 SpeedInput.Font = Enum.Font.GothamBold
@@ -155,7 +157,7 @@ local Footer = Instance.new("TextLabel")
 Footer.Size = UDim2.new(1, -20, 0, 20)
 Footer.Position = UDim2.new(0, 10, 1, -28)
 Footer.BackgroundTransparency = 1
-Footer.Text = "v2.3 • Tween / Fly / TP"
+Footer.Text = "v2.4 • Anında geçiş + Dünya Collision"
 Footer.Font = Enum.Font.Gotham
 Footer.TextSize = 11
 Footer.TextColor3 = Color3.fromRGB(100, 100, 110)
@@ -225,6 +227,23 @@ NoclipButton.MouseButton1Click:Connect(function()
 	end
 end)
 
+WorldColButton.MouseButton1Click:Connect(function()
+	_G.WorldNoCollision = not _G.WorldNoCollision
+	if _G.WorldNoCollision then
+		WorldColButton.Text = "Dünya Collision: KAPALI"
+		WorldColButton.BackgroundColor3 = Color3.fromRGB(40, 170, 90)
+		-- Collision kapat
+		for _, v in pairs(Workspace:GetDescendants()) do
+			if v:IsA("BasePart") and not v:IsA("Terrain") and v.Name ~= "FarmPlatform" then
+				v.CanCollide = false
+			end
+		end
+	else
+		WorldColButton.Text = "Dünya Collision: AÇIK"
+		WorldColButton.BackgroundColor3 = Color3.fromRGB(180, 45, 45)
+	end
+end)
+
 AntiAfkButton.MouseButton1Click:Connect(function()
 	_G.AntiAFKEnabled = not _G.AntiAFKEnabled
 	if _G.AntiAFKEnabled then
@@ -281,6 +300,16 @@ RunService.Stepped:Connect(function()
 	end
 end)
 
+-- Dünya collision sürekli kapatılsın istiyorsa
+RunService.Heartbeat:Connect(function()
+	if not _G.WorldNoCollision then return end
+	for _, v in pairs(Workspace:GetDescendants()) do
+		if v:IsA("BasePart") and not v:IsA("Terrain") and v.Name ~= "FarmPlatform" and v.CanCollide then
+			v.CanCollide = false
+		end
+	end
+end)
+
 local function createPlatform()
 	if platform and platform.Parent then return platform end
 	local char = LocalPlayer.Character
@@ -324,7 +353,7 @@ task.spawn(function()
 end)
 
 -- ======================
--- YARDIMCI FONKSİYONLAR
+-- YARDIMCI
 -- ======================
 function stopAllMovement()
 	isMoving = false
@@ -334,16 +363,14 @@ function stopAllMovement()
 		pcall(function() currentTween:Cancel() end)
 		currentTween = nil
 	end
-
 	if flyBV then
 		pcall(function() flyBV:Destroy() end)
 		flyBV = nil
 	end
-
 	destroyPlatform()
 end
 
-local function getClosestCoin()
+local function getClosestCoin(exclude)
 	local char = LocalPlayer.Character
 	if not char then return nil end
 	local root = char:FindFirstChild("HumanoidRootPart")
@@ -354,6 +381,8 @@ local function getClosestCoin()
 	for _, item in pairs(Workspace:GetDescendants()) do
 		if (item.Name == "Coin_Server" or item.Name == "Candy_Server") and item:IsA("BasePart") then
 			if item.Transparency >= 0.9 then continue end
+			if exclude and item == exclude then continue end
+
 			local dist = (item.Position - root.Position).Magnitude
 			if dist < shortest then
 				shortest = dist
@@ -379,63 +408,71 @@ local function bringAllCoins()
 	end
 end
 
+local function isNearCoin(coin, maxDist)
+	maxDist = maxDist or 6
+	local char = LocalPlayer.Character
+	if not char then return false end
+	local root = char:FindFirstChild("HumanoidRootPart")
+	if not root or not coin then return false end
+	return (root.Position - coin.Position).Magnitude <= maxDist
+end
+
 -- ======================
--- HAREKET MODLARI
+-- HAREKET MODLARI (başarı durumu döndürür)
 -- ======================
 local function moveTween(coin)
 	local char = LocalPlayer.Character
-	if not char then return end
+	if not char then return false end
 	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root or not coin then return end
+	if not root or not coin then return false end
 
 	createPlatform()
 
 	local dist = (coin.Position - root.Position).Magnitude
 	local speed = math.clamp(_G.MovementSpeed, 20, 200)
-	local duration = math.clamp(dist / speed, 0.12, 7)
+	local duration = math.clamp(dist / speed, 0.08, 6)
 
 	root.AssemblyLinearVelocity = Vector3.zero
 	root.AssemblyAngularVelocity = Vector3.zero
 
-	local target = coin.CFrame + Vector3.new(0, 2.8, 0)
-	local info = TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+	local target = coin.CFrame + Vector3.new(0, 2.6, 0)
+	local info = TweenInfo.new(duration, Enum.EasingStyle.Linear)
 
 	currentTween = TweenService:Create(root, info, {CFrame = target})
 	currentTween:Play()
 
-	-- Platformu da aynı anda hareket ettir
 	if platform then
-		local platTween = TweenService:Create(platform, info, {
-			CFrame = target * CFrame.new(0, -3.1, 0)
-		})
-		platTween:Play()
+		TweenService:Create(platform, info, {
+			CFrame = target * CFrame.new(0, -3.0, 0)
+		}):Play()
 	end
 
 	local start = tick()
 	while currentTween and currentTween.PlaybackState == Enum.PlaybackState.Playing do
 		if not _G.AutoFarmEnabled or not coin:IsDescendantOf(Workspace) or coin.Transparency >= 0.9 then
-			break
+			return false
 		end
-		if tick() - start > 9 then break end
+		if tick() - start > 8 then return false end
 		task.wait()
 	end
+
+	return isNearCoin(coin, 7)
 end
 
 local function moveFly(coin)
 	local char = LocalPlayer.Character
-	if not char then return end
+	if not char then return false end
 	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root or not coin then return end
+	if not root or not coin then return false end
 
-	-- Eski BV varsa temizle
 	if flyBV then
 		flyBV:Destroy()
 		flyBV = nil
 	end
 
 	flyBV = Instance.new("BodyVelocity")
-	flyBV.MaxForce = Vector3.new(40000, 40000, 40000)
-	flyBV.P = 10000
+	flyBV.MaxForce = Vector3.new(50000, 50000, 50000)
+	flyBV.P = 12000
 	flyBV.Velocity = Vector3.zero
 	flyBV.Parent = root
 
@@ -443,102 +480,109 @@ local function moveFly(coin)
 	local start = tick()
 
 	while _G.AutoFarmEnabled and coin and coin:IsDescendantOf(Workspace) and coin.Transparency < 0.9 do
-		local direction = (coin.Position + Vector3.new(0, 2.5, 0) - root.Position)
+		local direction = (coin.Position + Vector3.new(0, 2.4, 0) - root.Position)
 		local dist = direction.Magnitude
 
-		if dist < 4 then
-			-- Coin'e yaklaştı → dur
+		if dist < 5 then
 			flyBV.Velocity = Vector3.zero
 			break
 		end
 
 		flyBV.Velocity = direction.Unit * speed
-
-		if tick() - start > 8 then break end
+		if tick() - start > 7 then break end
 		task.wait()
 	end
 
 	if flyBV then
 		flyBV.Velocity = Vector3.zero
 	end
+
+	return isNearCoin(coin, 7)
 end
 
 local function moveTeleport(coin)
 	local char = LocalPlayer.Character
-	if not char then return end
+	if not char then return false end
 	local root = char:FindFirstChild("HumanoidRootPart")
-	if not root or not coin then return end
+	if not root or not coin then return false end
 
 	root.AssemblyLinearVelocity = Vector3.zero
-	root.CFrame = coin.CFrame + Vector3.new(0, 2.8, 0)
-	task.wait(0.06)
+	root.CFrame = coin.CFrame + Vector3.new(0, 2.6, 0)
+	return true
 end
 
 local function goToCoin(coin)
-	if isMoving then return end
+	if isMoving then return false end
 	isMoving = true
 	currentTarget = coin
 
+	local success = false
 	if _G.MovementMode == "Tween" then
-		moveTween(coin)
+		success = moveTween(coin)
 	elseif _G.MovementMode == "Fly" then
-		moveFly(coin)
+		success = moveFly(coin)
 	else
-		moveTeleport(coin)
+		success = moveTeleport(coin)
 	end
 
 	isMoving = false
 	currentTarget = nil
+	return success
 end
 
 -- ======================
--- ANA DÖNGÜ
+-- ANA DÖNGÜ (sıfır bekleme)
 -- ======================
 task.spawn(function()
 	while true do
-		task.wait(0.05)
-
 		if not _G.AutoFarmEnabled then
 			if isMoving then stopAllMovement() end
+			task.wait(0.1)
 			continue
 		end
 
 		local char = LocalPlayer.Character
 		if not char or not char:FindFirstChild("HumanoidRootPart") then
-			task.wait(0.7)
+			task.wait(0.6)
 			continue
 		end
 
-		-- Bring mode
 		if _G.BringCoinsEnabled then
 			bringAllCoins()
-			task.wait(0.25)
+			task.wait(0.2)
 			continue
 		end
 
 		local coin = getClosestCoin()
-
 		if coin then
-			-- Eğer mevcut hedef yok olduysa veya değiştiyse hemen yeni coine git
+			-- Mevcut hedef farklıysa veya hareket yoksa hemen git
 			if currentTarget ~= coin or not isMoving then
 				if isMoving then
 					stopAllMovement()
-					task.wait()
 				end
-				goToCoin(coin)
+
+				local success = goToCoin(coin)
+
+				-- Başarılı olduysa (konuma ulaştıysa) hiç beklemeden sıradakine geç
+				if success then
+					-- coin yok olduysa veya hala varsa fark etmez, direkt sonraki en yakını al
+					-- burada hiçbir task.wait yok
+				end
 			end
 		else
 			StatusLabel.Text = "Durum: Coin aranıyor..."
 			if isMoving then stopAllMovement() end
-			task.wait(0.3)
+			task.wait(0.25)
 		end
+
+		-- Sadece çok kısa bir nefes alma (CPU için)
+		task.wait(0.03)
 	end
 end)
 
--- Karakter değişince temizle
 LocalPlayer.CharacterAdded:Connect(function()
 	stopAllMovement()
-	task.wait(1.2)
+	task.wait(1)
 end)
 
-print("[MM2 Ultimate Farm] v2.3 yüklendi — Tween / Fly / Teleport")
+print("[MM2 Ultimate Farm] v2.4 yüklendi — Anında geçiş + Dünya Collision")
