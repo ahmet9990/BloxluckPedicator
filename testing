@@ -11,6 +11,7 @@ _G.MovementMode = "Tween" -- "Tween" veya "Teleport"
 _G.MovementSpeed = 25 -- Tween Hızı veya Teleport Hızı (bekleme süresi)
 _G.AntiLagEnabled = false
 _G.RenderingEnabled = true
+_G.NoclipEnabled = false
 
 -- ==========================================
 -- ANTI-AFK KORUMASI
@@ -37,6 +38,7 @@ local ModeButton = Instance.new("TextButton")
 local SpeedLabel = Instance.new("TextLabel")
 local SpeedInput = Instance.new("TextBox")
 
+local NoclipButton = Instance.new("TextButton")
 local AntiLagButton = Instance.new("TextButton")
 local RenderButton = Instance.new("TextButton")
 
@@ -44,9 +46,9 @@ if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end
 ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- Ana Panel (Yeni özellikler sığması için boyutu büyütüldü)
+-- Ana Panel (Noclip tuşu için boyutu biraz daha büyüttüm)
 MainFrame.Name = "MM2_FarmPanel"
-MainFrame.Size = UDim2.new(0, 220, 0, 310)
+MainFrame.Size = UDim2.new(0, 220, 0, 355)
 MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
@@ -108,9 +110,20 @@ SpeedInput.TextSize = 14
 SpeedInput.BorderSizePixel = 0
 SpeedInput.Parent = MainFrame
 
+-- Noclip Tuşu
+NoclipButton.Size = UDim2.new(0, 180, 0, 35)
+NoclipButton.Position = UDim2.new(0, 20, 0, 175)
+NoclipButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+NoclipButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+NoclipButton.Text = "No-Clip: KAPALI"
+NoclipButton.Font = Enum.Font.SourceSansBold
+NoclipButton.TextSize = 14
+NoclipButton.BorderSizePixel = 0
+NoclipButton.Parent = MainFrame
+
 -- Anti-Lag Tuşu
 AntiLagButton.Size = UDim2.new(0, 180, 0, 35)
-AntiLagButton.Position = UDim2.new(0, 20, 0, 175)
+AntiLagButton.Position = UDim2.new(0, 20, 0, 220)
 AntiLagButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
 AntiLagButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 AntiLagButton.Text = "Anti-Lag: KAPALI"
@@ -121,7 +134,7 @@ AntiLagButton.Parent = MainFrame
 
 -- 3D Rendering Tuşu
 RenderButton.Size = UDim2.new(0, 180, 0, 35)
-RenderButton.Position = UDim2.new(0, 20, 0, 220)
+RenderButton.Position = UDim2.new(0, 20, 0, 265)
 RenderButton.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
 RenderButton.TextColor3 = Color3.fromRGB(255, 255, 255)
 RenderButton.Text = "3D Rendering: AÇIK"
@@ -161,6 +174,32 @@ ModeButton.MouseButton1Click:Connect(function()
     else
         _G.MovementMode = "Tween"
         ModeButton.Text = "Mod: Tween"
+    end
+end)
+
+-- No-Clip Açma/Kapama Tuşu
+NoclipButton.MouseButton1Click:Connect(function()
+    _G.NoclipEnabled = not _G.NoclipEnabled
+    if _G.NoclipEnabled then
+        NoclipButton.Text = "No-Clip: AÇIK"
+        NoclipButton.BackgroundColor3 = Color3.fromRGB(40, 180, 40)
+    else
+        NoclipButton.Text = "No-Clip: KAPALI"
+        NoclipButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+    end
+end)
+
+-- Sürekli çalışan No-Clip döngüsü (Açıkse duvardan geçtirir)
+RunService.Stepped:Connect(function()
+    if _G.NoclipEnabled then
+        local char = LocalPlayer.Character
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                end
+            end
+        end
     end
 end)
 
@@ -266,7 +305,7 @@ local function startFlingLoop()
     local noclipConnection
     local resetDetected = false
     
-    -- No-Clip Aç
+    -- No-Clip Aç (Fling esnasında da garanti olsun)
     noclipConnection = RunService.Stepped:Connect(function()
         for _, part in pairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
