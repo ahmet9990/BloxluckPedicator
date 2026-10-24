@@ -15,6 +15,9 @@ _G.RenderingEnabled = true
 _G.NoclipEnabled = false
 _G.AntiAFKEnabled = false
 
+-- Aktif Tween'i takip etmek için
+local currentTween = nil
+
 -- ==========================================
 -- SCREEN GUI TASARIMI
 -- ==========================================
@@ -37,7 +40,7 @@ if syn and syn.protect_gui then syn.protect_gui(ScreenGui) end
 ScreenGui.Parent = game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
 ScreenGui.ResetOnSpawn = false
 
--- Ana Panel (Yeni Anti-AFK tuşu için boyutu büyüttük)
+-- Ana Panel
 MainFrame.Name = "MM2_FarmPanel"
 MainFrame.Size = UDim2.new(0, 220, 0, 400)
 MainFrame.Position = UDim2.new(0.05, 0, 0.3, 0)
@@ -166,10 +169,18 @@ ToggleButton.MouseButton1Click:Connect(function()
     else
         ToggleButton.Text = "Auto Farm: KAPALI"
         ToggleButton.BackgroundColor3 = Color3.fromRGB(180, 40, 40)
+        if currentTween then
+            currentTween:Cancel()
+            currentTween = nil
+        end
     end
 end)
 
 ModeButton.MouseButton1Click:Connect(function()
+    if currentTween then
+        currentTween:Cancel()
+        currentTween = nil
+    end
     if _G.MovementMode == "Tween" then
         _G.MovementMode = "Teleport"
         ModeButton.Text = "Mod: Teleport"
@@ -204,7 +215,7 @@ RunService.Stepped:Connect(function()
     end
 end)
 
--- Yeni Anti-AFK Metodu ve Tuşu (Kamera hafif oynatma yöntemi - karaktere baskı yapmaz)
+-- Anti-AFK Tuşu ve Döngüsü
 AntiAfkButton.MouseButton1Click:Connect(function()
     _G.AntiAFKEnabled = not _G.AntiAFKEnabled
     if _G.AntiAFKEnabled then
@@ -218,7 +229,7 @@ end)
 
 task.spawn(function()
     while true do
-        task.wait(60) -- Her 1 dakikada bir kontrol eder
+        task.wait(60)
         if _G.AntiAFKEnabled then
             local cam = Workspace.CurrentCamera
             if cam then
@@ -262,7 +273,7 @@ RenderButton.MouseButton1Click:Connect(function()
     end
 end)
 
--- En yakın coini bul
+-- En yakın coini/candy'yi bul
 local function getClosestCoin()
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
@@ -270,7 +281,7 @@ local function getClosestCoin()
     local closest, shortest = nil, math.huge
     
     for _, item in pairs(Workspace:GetDescendants()) do
-        if item.Name == "Coin_Server" and item:IsA("BasePart") then
+        if (item.Name == "Coin_Server" or item.Name == "Candy_Server") and item:IsA("BasePart") then
             local dist = (item.Position - root.Position).Magnitude
             if dist < shortest then
                 shortest = dist
@@ -286,7 +297,7 @@ local function getCollectedCoins()
     local leaderstats = LocalPlayer:FindFirstChild("leaderstats")
     if leaderstats then
         for _, stat in pairs(leaderstats:GetChildren()) do
-            if stat.Name == "Coins" or stat.Name == "Coin" or stat.Name == "Collected" then
+            if stat.Name == "Coins" or stat.Name == "Coin" or stat.Name == "Collected" or stat.Name == "Candies" then
                 return stat.Value
             end
         end
@@ -294,32 +305,44 @@ local function getCollectedCoins()
     return 0
 end
 
--- Smooth Tween veya Teleport ile Gitme (Mod çakışmalarına karşı korumalı)
+-- Ultra Smooth Tween ve Teleport (Çakışmasız)
 local function moveToCoin(coin)
     local char = LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     local root = char.HumanoidRootPart
     
     if _G.MovementMode == "Tween" then
+        if currentTween then
+            currentTween:Cancel()
+            currentTween = nil
+        end
+        
         local dist = (coin.Position - root.Position).Magnitude
-        local speed = math.clamp(_G.MovementSpeed, 1, 500)
+        local speed = math.clamp(_G.MovementSpeed, 5, 300)
         local timeToTween = dist / speed
         
-        local info = TweenInfo.new(timeToTween, Enum.EasingStyle.Sine, Enum.EasingDirection.Out)
-        local tween = TweenService:Create(root, info, {CFrame = coin.CFrame})
-        tween:Play()
+        -- Fiziksel sarsıntıyı önlemek için hızı sıfırla
+        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+        root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
         
-        while tween.PlaybackState == Enum.PlaybackState.Playing do
+        local info = TweenInfo.new(timeToTween, Enum.EasingStyle.Linear)
+        currentTween = TweenService:Create(root, info, {CFrame = coin.CFrame})
+        currentTween:Play()
+        
+        while currentTween and currentTween.PlaybackState == Enum.PlaybackState.Playing do
             if not _G.AutoFarmEnabled or _G.MovementMode ~= "Tween" or not coin:IsDescendantOf(Workspace) or not char:FindFirstChild("HumanoidRootPart") then
-                tween:Cancel()
+                currentTween:Cancel()
+                currentTween = nil
                 break
             end
             task.wait()
         end
+        currentTween = nil
     else
         -- Teleport Modu
+        root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
         root.CFrame = coin.CFrame
-        task.wait(math.clamp(_G.MovementSpeed / 100, 0.01, 1))
+        task.wait(math.clamp(_G.MovementSpeed / 200, 0.01, 0.1))
     end
 end
 
@@ -378,13 +401,13 @@ end
 -- Ana Farm Döngüsü
 task.spawn(function()
     while true do
-        task.wait(0.3)
+        task.wait(0.2)
         if _G.AutoFarmEnabled then
             local coin = getClosestCoin()
             if coin and coin:IsDescendantOf(Workspace) then
                 moveToCoin(coin)
             else
-                task.wait(1)
+                task.wait(0.8)
                 local currentCoins = getCollectedCoins()
                 if currentCoins >= 50 and (currentCoins % 50 == 0) then
                     local char = LocalPlayer.Character
